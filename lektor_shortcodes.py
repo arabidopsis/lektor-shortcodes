@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
+from urllib.parse import urlparse
 from lektor.pluginsystem import Plugin
 from lektor.context import get_ctx
 from jinja2 import TemplateNotFound
@@ -11,22 +12,22 @@ QUOTES = re.compile(r'["]([^"].*?)["]')
 
 
 def parse_args(s):
-    d = {}
+    quoted = {}
 
-    def f(m):
-        i = len(d)
+    def map_quotes(m):
+        i = len(quoted)
         k = f"#######{i}#######"
-        d[k] = m.group(1)
+        quoted[k] = m.group(1)
         return k
 
     def fix_val(v):
-        if v in d:
-            return d[v]
+        if v in quoted:
+            return quoted[v]
         if v.isdigit():
             return int(v)
         return v
 
-    s = QUOTES.sub(f, s)
+    s = QUOTES.sub(map_quotes, s)
     args = s.split()
     kwargs = dict(a.split("=", 1) for a in args if "=" in a)
     args = [a for a in args if "=" not in a]
@@ -55,9 +56,39 @@ def render(cmd, args, kwargs):
         return f'[could not find shortcode "{cmd}.html" template]'
 
 
+def fix_src(url):
+
+    return url.geturl()
+
+
 class ShortcodesMixin:
     name = "Markdown Shortcodes"
     description = "Embeds shortcodes in Markdown."
+
+    def image(self, src, title, alt):
+        # title must be quoted
+        # ![alt](src "title")
+
+        url = urlparse(src)
+        src = fix_src(url)
+        if ":" not in alt:
+            return super().image(src, title, alt)
+
+        alt, rest = alt.split(":", 1)
+        args, kwargs = parse_args(rest)
+        style = "; ".join(f"{k}:{v}" for k, v in kwargs.items())
+        cls = " ".join(args)
+        attrs = [
+            f'{attr}="{value}"'
+            for attr, value in [
+                ("style", style),
+                ("class", cls),
+                ("alt", alt),
+                ("title", title),
+            ]
+            if value
+        ]
+        return f"""<img src="{src}" {' '.join(attrs)}/>"""
 
     def paragraph(self, text):
         def shortcode(m):

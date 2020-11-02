@@ -27,6 +27,12 @@ For example for the `shortcodes/youtube.html` you might have:
 
 ```
 
+## Images
+
+Also parses images viz: `![Alt text: a b c width=30px](url "title text")`.
+After a colon in the alt text all positional arguments are interpreted as classes
+and keyword arguments are interpreted as style parameters.
+
 ## Installation
 
 place this package in the directory packages maybe with
