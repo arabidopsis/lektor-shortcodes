@@ -5,6 +5,8 @@ from lektor.pluginsystem import Plugin
 from lektor.context import get_ctx
 from jinja2 import TemplateNotFound
 
+# see https://github.com/lektor/lektor-markdown-highlighter/blob/master/lektor_markdown_highlighter.py
+# for case where we need to register dependencies
 
 SHORTCODE = re.compile(r"{{\s*(.*?)\s*}}")
 
@@ -68,6 +70,8 @@ class ShortcodesMixin:
     def image(self, src, title, alt):
         # title must be quoted
         # ![alt](src "title")
+        # if we have a config file
+        # get_ctx().record_dependency(self.config_filename)
 
         url = urlparse(src)
         src = fix_src(url)
@@ -91,6 +95,8 @@ class ShortcodesMixin:
         return f"""<img src="{src}" {' '.join(attrs)}/>"""
 
     def paragraph(self, text):
+        # if we have a config file
+        # get_ctx().record_dependency(self.config_filename)
         def shortcode(m):
             code = m.group(1).strip()
             args, kwargs = parse_args(code)
