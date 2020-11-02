@@ -11,6 +11,9 @@ the template in the variable `args`.
 Currently no argument checking is done so the template should be
 very defensive and have defaults for all the keyword arguments.
 
+Also only double quotes `"` are understood if you have space separated arguments.
+Keys *can't* have spaces.
+
 For example for the `shortcodes/youtube.html` you might have:
 
 ```html
