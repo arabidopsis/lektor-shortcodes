@@ -1,0 +1,5 @@
+{# seehttps://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/get-statuses-oembed #}
+
+{% set url = 'https://twitter.com/' + args[0] %}
+{% set params = kwargs | mergedict(url=url) %}
+{{json_request('https://publish.twitter.com/oembed', params=params).html | safe}}
