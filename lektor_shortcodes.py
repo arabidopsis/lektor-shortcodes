@@ -49,7 +49,7 @@ def render(cmd, args, kwargs):
         if ctx is None:
             return f"[no build context for {cmd}]"
         values = {**kwargs, "args": args, "kwargs": kwargs}
-        ctx.record._shortcodes[cmd] = values
+        # ctx.record._shortcodes[cmd] = values
         return ctx.env.render_template(
             [
                 f"shortcodes/{cmd}.html",
@@ -115,6 +115,11 @@ class ShortcodesMixin:
 
         return super().paragraph(SHORTCODE.sub(shortcode, text))
 
+def page_slugs(c):
+    if '@' not in c.path:
+        return [c['_slug']]
+    s = c.path.split('@')
+    return [*s[:-1], 'page', s[-1]]
 
 class ShortcodesPlugin(Plugin):
     name = "shortcodes"
@@ -145,4 +150,5 @@ class ShortcodesPlugin(Plugin):
         # e.g kwargs | mergedict(a=1, c=2)
         # because we can't do {**kwargs, a:1, c:2}
         self.env.jinja_env.filters["mergedict"] = lambda d, **kwargs: {**d, **kwargs}
+        self.env.jinja_env.filters["page_slugs"] = page_slugs
 

@@ -1,8 +1,7 @@
+<div class="embed-responsive embed-responsive-16by9 {{args[1:]|join(' ')}}">
 <iframe
-{%-if class %} class="{{class}}"{% endif -%}
-{%-if position %} style="float:{{position}}"{% endif %}
-width="{{width|default(560)}}" 
-height="{{height|default(315)}}" 
 src="https://www.youtube.com/embed/{{args[0]}}" 
-frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+class="embed-responsive-item"
+allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
 allowfullscreen></iframe>
+</div>
