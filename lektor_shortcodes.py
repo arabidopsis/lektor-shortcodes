@@ -68,6 +68,29 @@ def fix_src(url):
     return url.geturl()
 
 
+_prefix_re = re.compile(r"^\s*(!{1,4})\s+")
+
+CLASSES = {
+    1: "success",
+    2: "info",
+    3: "warning",
+    4: "danger",
+}
+
+C = """<div class="alert alert-{}">
+{}
+</div>"""
+
+# see https://github.com/lektor/lektor-markdown-admonition/blob/master/lektor_markdown_admonition.py
+class AdmonitionMixin:
+    def paragraph(self, text):
+        match = _prefix_re.match(text)
+        if match is None:
+            return super().paragraph(text)
+        level = len(match.group(1))
+        return C.format(CLASSES[level], text[match.end() :],)
+
+
 class ShortcodesMixin:
     name = "Markdown Shortcodes"
     description = "Embeds shortcodes in Markdown."
@@ -104,6 +127,31 @@ class ShortcodesMixin:
         ]
         return f"""<img src="{src}" {' '.join(attrs)}/>"""
 
+    def link(self, link, title, text):
+        if not self.SEP in text:
+            return super().link(link, title, text)
+        text, rest = text.split(self.SEP, 1)
+        args, kwargs = parse_args(rest)
+        if self.record is not None:
+            url = url_parse(link)
+            if not url.scheme:
+                link = self.record.url_to("!" + link, base_url=get_ctx().base_url)
+        if link.startswith("javascript:"):
+            link = ""
+        link = escape(link)
+        style = "; ".join(f"{k}:{v}" for k, v in kwargs.items())
+        cls = " ".join(args)
+        attrs = [
+            f'{attr}="{value}"'
+            for attr, value in [
+                ("style", style),
+                ("class", cls),
+                ("title", escape(title) if title else ""),
+            ]
+            if value
+        ]
+        return f"""<a href="{link}" {' '.join(attrs)}/>{text}</a>"""
+
     def paragraph(self, text):
         # if we have a config file
         # get_ctx().record_dependency(self.config_filename)
@@ -130,6 +178,7 @@ class ShortcodesPlugin(Plugin):
 
     def on_markdown_config(self, config, **extra):
         config.renderer_mixins.append(ShortcodesMixin)
+        config.renderer_mixins.append(AdmonitionMixin)
 
     # def on_before_build(self, builder, build_state, source, prog, **extra):
     #     if isinstance(source, Page):
