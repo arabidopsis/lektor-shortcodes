@@ -15,7 +15,7 @@ with open("lektor_shortcodes.py", "rb") as f:
     )
 
 setup(
-    author="Ian Castleden,,,",
+    author="Ian Castleden",
     author_email="ian.castleden@gmail.com",
     description=description,
     keywords="Lektor plugin",
@@ -23,6 +23,9 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     name="lektor-shortcodes",
+    install_requires=[
+            'requests'
+        ],
     packages=find_packages(),
     py_modules=["lektor_shortcodes"],
     url="https://github.com/arabidopsis/lektor-shortcodes",

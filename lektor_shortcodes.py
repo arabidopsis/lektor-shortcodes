@@ -47,7 +47,7 @@ def render(cmd, args, kwargs):
     try:
         ctx = get_ctx()
         if ctx is None:
-            return f"[no build context for {cmd}]"
+            return f"[no lektor build context for {cmd}]"
         values = {**kwargs, "args": args, "kwargs": kwargs}
         # ctx.record._shortcodes[cmd] = values
         return ctx.env.render_template(
@@ -71,6 +71,7 @@ def fix_src(url):
 class ShortcodesMixin:
     name = "Markdown Shortcodes"
     description = "Embeds shortcodes in Markdown."
+    SEP = ":"
 
     def image(self, src, title, alt):
         # title must be quoted
@@ -78,10 +79,10 @@ class ShortcodesMixin:
         # if we have a config file
         # get_ctx().record_dependency(self.config_filename)
 
-        if ":" not in alt:
+        if self.SEP not in alt:
             return super().image(src, title, alt)
 
-        alt, rest = alt.split(":", 1)
+        alt, rest = alt.split(self.SEP, 1)
         args, kwargs = parse_args(rest)
         if self.record is not None:
             url = url_parse(src)
@@ -115,11 +116,13 @@ class ShortcodesMixin:
 
         return super().paragraph(SHORTCODE.sub(shortcode, text))
 
+
 def page_slugs(c):
-    if '@' not in c.path:
-        return [c['_slug']]
-    s = c.path.split('@')
-    return [*s[:-1], 'page', s[-1]]
+    if "@" not in c.path:
+        return [c["_slug"]]
+    s = c.path.split("@")
+    return [*s[:-1], "page", s[-1]]
+
 
 class ShortcodesPlugin(Plugin):
     name = "shortcodes"
@@ -142,11 +145,35 @@ class ShortcodesPlugin(Plugin):
         # maybe on process-template-context context, values
         import requests
 
+        TRUE = {
+            True,
+            "1",
+            "yes",
+            "ok",
+            "y",
+            "true",
+        }
+
+        settings = self.get_lektor_config()["THEME_SETTINGS"]
+        sep = settings.get("shortcodes-separator")
+        if sep:
+            ShortcodesMixin.SEP = sep.strip()
+
+        print(
+            settings,
+            settings.get("is_dark_theme"),
+            settings.get("is_dark_theme") in TRUE,
+        )
+
         # session = requests.Session()
         def get_json(url, params, **kwargs):
             return requests.get(url, params=params, **kwargs).json()
 
+        # for e.g. tweet shortcode
         self.env.jinja_env.globals["json_request"] = get_json
+        self.env.jinja_env.globals["is_dark_theme"] = (
+            settings.get("is_dark_theme") in TRUE
+        )
         # e.g kwargs | mergedict(a=1, c=2)
         # because we can't do {**kwargs, a:1, c:2}
         self.env.jinja_env.filters["mergedict"] = lambda d, **kwargs: {**d, **kwargs}
