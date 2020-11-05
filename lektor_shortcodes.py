@@ -6,6 +6,7 @@ from lektor.db import Page
 from jinja2 import TemplateNotFound
 from markupsafe import escape
 from werkzeug.urls import url_parse
+import click
 
 # see https://github.com/lektor/lektor-markdown-highlighter/blob/master/lektor_markdown_highlighter.py
 # for case where we need to register dependencies
@@ -91,26 +92,38 @@ class AdmonitionMixin:
         return C.format(CLASSES[level], text[match.end() :],)
 
 
+A = re.compile("^@([0-9]+)$")
+
+
 class ShortcodesMixin:
     name = "Markdown Shortcodes"
     description = "Embeds shortcodes in Markdown."
     SEP = ":"
+    IMG_WIDTH = 400
 
     def image(self, src, title, alt):
         # title must be quoted
         # ![alt](src "title")
         # if we have a config file
         # get_ctx().record_dependency(self.config_filename)
-
-        if self.SEP not in alt:
+        att = A.match(src)
+        if not att and self.SEP not in alt:
             return super().image(src, title, alt)
 
         alt, rest = alt.split(self.SEP, 1)
         args, kwargs = parse_args(rest)
         if self.record is not None:
-            url = url_parse(src)
-            if not url.scheme:
-                src = self.record.url_to("!" + src, base_url=get_ctx().base_url)
+            if att:
+                n = int(att.group(1))
+                img = self.record.attachments.images.offset(n - 1).limit(1).first()
+                # img = self.record.attachments.images.first()
+                if img:
+                    img = img.thumbnail(width=self.IMG_WIDTH)
+                    src = img.url_path
+            else:
+                url = url_parse(src)
+                if not url.scheme:
+                    src = self.record.url_to("!" + src, base_url=get_ctx().base_url)
         src = escape(src)
         alt = escape(alt)
         style = "; ".join(f"{k}:{v}" for k, v in kwargs.items())
@@ -176,10 +189,13 @@ class ShortcodesPlugin(Plugin):
     name = "shortcodes"
     description = "Embeds shortcodes in Markdown."
 
-    def on_markdown_config(self, config, **extra):
-        config.renderer_mixins.append(ShortcodesMixin)
-        config.renderer_mixins.append(AdmonitionMixin)
-
+    def on_markdown_config(self, config=None, extra_flags=None):
+        click.secho(f"markdownconfig {config}", fg='yellow', bold=True)
+        if config:
+            config.renderer_mixins.append(ShortcodesMixin)
+            config.renderer_mixins.append(AdmonitionMixin)
+    
+        return extra_flags
     # def on_before_build(self, builder, build_state, source, prog, **extra):
     #     if isinstance(source, Page):
     #         source._shortcodes = {}
@@ -190,7 +206,7 @@ class ShortcodesPlugin(Plugin):
     #             print("end", source.path, source._shortcodes)
     #         del source._shortcodes
 
-    def on_setup_env(self, **extra):
+    def on_setup_env(self, extra_flags=None):
         # maybe on process-template-context context, values
         import requests
 
@@ -208,11 +224,9 @@ class ShortcodesPlugin(Plugin):
         if sep:
             ShortcodesMixin.SEP = sep.strip()
 
-        print(
-            settings,
-            settings.get("is_dark_theme"),
-            settings.get("is_dark_theme") in TRUE,
-        )
+        width = settings.get("shortcodes-img-width")
+        if width:
+            ShortcodesMixin.IMG_WIDTH = int(width)
 
         # session = requests.Session()
         def get_json(url, params, **kwargs):
@@ -227,4 +241,5 @@ class ShortcodesPlugin(Plugin):
         # because we can't do {**kwargs, a:1, c:2}
         self.env.jinja_env.filters["mergedict"] = lambda d, **kwargs: {**d, **kwargs}
         self.env.jinja_env.filters["page_slugs"] = page_slugs
-
+        click.secho('shortcodes initialised!', fg="green", bold=True)
+        return extra_flags
