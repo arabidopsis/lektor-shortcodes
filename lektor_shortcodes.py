@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 import re
+import os
 from lektor.pluginsystem import Plugin
 from lektor.context import get_ctx
 from lektor.db import Page
 from jinja2 import TemplateNotFound
 from markupsafe import escape
 from werkzeug.urls import url_parse
+from datetime import datetime
 import click
+
+
+local_timezone = datetime.utcnow().astimezone().tzinfo
+
+
 
 # see https://github.com/lektor/lektor-markdown-highlighter/blob/master/lektor_markdown_highlighter.py
 # for case where we need to register dependencies
@@ -184,13 +191,20 @@ def page_slugs(c):
     s = c.path.split("@")
     return [*s[:-1], "page", s[-1]]
 
+def lastmod(record):
+    if record.is_attachment:
+        fn = record.attachment_filename
+    else:
+        fn = record.source_filename
+    mtime = os.stat(fn).st_mtime
+    return datetime.fromtimestamp(mtime,tz=local_timezone).isoformat()
 
 class ShortcodesPlugin(Plugin):
     name = "shortcodes"
     description = "Embeds shortcodes in Markdown."
 
     def on_markdown_config(self, config=None, extra_flags=None):
-        click.secho(f"markdownconfig {config}", fg='yellow', bold=True)
+        # click.secho(f"markdownconfig {config}", fg='yellow', bold=True)
         if config:
             config.renderer_mixins.append(ShortcodesMixin)
             config.renderer_mixins.append(AdmonitionMixin)
@@ -241,5 +255,6 @@ class ShortcodesPlugin(Plugin):
         # because we can't do {**kwargs, a:1, c:2}
         self.env.jinja_env.filters["mergedict"] = lambda d, **kwargs: {**d, **kwargs}
         self.env.jinja_env.filters["page_slugs"] = page_slugs
+        self.env.jinja_env.filters["lastmod"] = lastmod
         click.secho('shortcodes initialised!', fg="green", bold=True)
         return extra_flags
