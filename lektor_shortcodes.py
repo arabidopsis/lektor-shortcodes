@@ -161,7 +161,6 @@ class ShortcodesMixin:
         # if we have a config file
         # get_ctx().record_dependency(self.config_filename)
         def getsrc(path):
-            print('path', path)
             return  self.record.url_to("!" + path, base_url=get_ctx().base_url)
 
         att = A.match(src)
@@ -210,8 +209,7 @@ class ShortcodesMixin:
             url = url_parse(link)
             if not url.scheme:
                 link = self.record.url_to("!" + link, base_url=get_ctx().base_url)
-        if link.startswith("javascript:"):
-            link = ""
+        
         link = escape(link)
         style = "; ".join(f"{k}:{v}" for k, v in kwargs.items())
         cls = " ".join(args)
@@ -242,7 +240,7 @@ class ShortcodesMixin:
 
 
 
-class SplitText:
+class ReadMore:
 
     def __init__(self, config):
         self.config = config
@@ -257,7 +255,7 @@ class SplitText:
 
 
     def link_text(self, post, link):
-        link_text = self.config.get("link-text", '[{TEXT}]({URL_PATH})')
+        link_text = self.config.get("link-text", '<br/>[{TEXT}]({URL_PATH})')
         text = link if isinstance(link, str) else 'Read Full Post'
         link_text = link_text.format(URL_PATH=post.url_path, TEXT=text)
         return link_text
@@ -278,12 +276,10 @@ class SplitText:
             split = text_full.split(split_text)
             short.source = split[0]
             post._data[skey] = short
-            body.source = '  \n'.join(split)
+            body.source = '\n\n'.join(split)
 
             if link or self.display_link:
                 short.source += self.link_text(post, link)
-        else:
-            post._data[skey] = body
 
         return post
 
@@ -344,15 +340,6 @@ class ShortcodesPlugin(Plugin):
         # maybe on process-template-context context, values
         import requests
 
-        TRUE = {
-            True,
-            "1",
-            "yes",
-            "ok",
-            "y",
-            "true",
-        }
-        settings = self.get_lektor_config()["THEME_SETTINGS"]
         config = self.get_config()
         self.patch(config)
 
@@ -361,11 +348,9 @@ class ShortcodesPlugin(Plugin):
         def get_json(url, params, **kwargs):
             return requests.get(url, params=params, **kwargs).json()
 
-        is_dark_theme = settings.get("is_dark_theme") in TRUE
 
         # for e.g. tweet shortcode
         self.env.jinja_env.globals["json_request"] = get_json
-        self.env.jinja_env.globals["is_dark_theme"] = is_dark_theme
         # e.g kwargs | mergedict(a=1, c=2)
         # because we can't do {**kwargs, a:1, c:2}
         self.env.jinja_env.filters.update({
@@ -373,8 +358,8 @@ class ShortcodesPlugin(Plugin):
             "page_slugs" : page_slugs,
             "lastmod" : lastmod,
             "shorten" : shorten,
-            "read_more": SplitText(config.section_as_dict('read-more'))
+            "readmore": ReadMore(config.section_as_dict('readmore'))
             })
 
-        click.secho('shortcodes initialised!', fg="green", bold=True)
+        click.secho(f'shortcodes initialised!', fg="green", bold=True)
         return extra_flags

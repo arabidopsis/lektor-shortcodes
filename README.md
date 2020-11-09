@@ -11,10 +11,21 @@ the template in the variable `args`.
 Currently no argument checking is done so the template should be
 very defensive and have defaults for all the keyword arguments.
 
-Also only double quotes `"` are understood if you have space separated arguments.
 Keys *can't* have spaces.
 
-For example for the `shortcodes/youtube.html` you might have:
+The full code is:
+
+`{{ command arg1 arg2 arg3 key1=value1 key2=value2 key3="a string with spaces" }}`
+
+The plugin invokes a template of the name `shortcodes/{command}.html`
+where the variables available will be the dictionary
+`{**kwargs, args:args, kwargs:kwargs}`.
+
+Short codes are meant to be *short* You can change the braces using
+`shortcodes` configuration variable.
+
+For example for the `shortcodes/youtube.html` you might have for
+bootstrap:
 
 ```html
 <div class="embed-responsive embed-responsive-16by9 {{args[1:]|join(' ')}}">
@@ -26,8 +37,10 @@ For example for the `shortcodes/youtube.html` you might have:
     allowfullscreen>
 </iframe>
 </div>
-
 ```
+
+A sufficiently modern css framework should permit you to style any shortcode
+with simple class names.
 
 ## Images
 
@@ -40,12 +53,16 @@ You can alter the special separator (here `:`) in `configs/shortcodes.ini`:
 ```ini
 
 separator = @
-img_width = 400
+img_width = 800
 # don't do scaling
 img_width = none
+# expects a single grouping representing the body of the short code
 shortcodes = {{(.*?)}}
-is_dark_theme = true
 ```
+
+Also checks for `is_dark_theme` in
+the `[theme_settings]` section of the
+project file
 
 ## Installation
 
