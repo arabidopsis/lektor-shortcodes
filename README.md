@@ -2,7 +2,7 @@
 
 Add Hugo style "shortcodes" to lektor e.g.
 
-`{{ youtube rXZGDADbdad width=50% height=300 position=left }}`
+`{{ youtube rXZGDADbdad w-50 float-right m-2 }}`
 
 This requires a template `youtube.html` in the `shortcodes` directory
 of your templates folder. Positional arguments will be passed to
@@ -17,16 +17,15 @@ Keys *can't* have spaces.
 For example for the `shortcodes/youtube.html` you might have:
 
 ```html
-
+<div class="embed-responsive embed-responsive-16by9 {{args[1:]|join(' ')}}">
 <iframe
-    {% if class %} class="{{class}}"{% endif %}
-    {% if position %} style="float:{{position}}"{% endif %}
-    width="{{width|default(560)}}"
-    height="{{height|default(315)}}"
     src="https://www.youtube.com/embed/{{args[0]}}"
-    frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+    class="embed-responsive-item"
+    allow="accelerometer; autoplay; clipboard-write;
+          encrypted-media; gyroscope; picture-in-picture"
     allowfullscreen>
 </iframe>
+</div>
 
 ```
 
@@ -36,11 +35,16 @@ Also parses images viz: `![Alt text: a b c width=30px](url "title text")`.
 After a colon in the alt text all positional arguments are interpreted as classes
 and keyword arguments are interpreted as style parameters.
 
-You can alter the special separator (here `:`) in `[theme_settings]` viz:
+You can alter the special separator (here `:`) in `configs/shortcodes.ini`:
 
 ```ini
-[theme_settings]
-shortcodes-separator = @
+
+separator = @
+img_width = 400
+# don't do scaling
+img_width = none
+shortcodes = {{(.*?)}}
+is_dark_theme = true
 ```
 
 ## Installation
