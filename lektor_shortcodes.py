@@ -5,7 +5,7 @@ from copy import deepcopy
 from lektor.pluginsystem import Plugin
 from lektor.context import get_ctx
 from lektor.markdown import Markdown
-from lektor.db import F
+from lektor.db import F, Page
 from jinja2 import TemplateNotFound
 from jinja2.filters import environmentfilter, do_truncate
 from markupsafe import escape
@@ -18,24 +18,25 @@ import click
 local_timezone = datetime.utcnow().astimezone().tzinfo
 
 
-
 # see https://github.com/lektor/lektor-markdown-highlighter/blob/master/lektor_markdown_highlighter.py
 # for case where we need to register dependencies
 
 SHORTCODE = re.compile(r"{{(.*?)}}")
 
-QUOTES = re.compile(r'''(?:"([^"]*?)"|'([^']*?)')''')
+QUOTES = re.compile(r"""(?:"([^"]*?)"|'([^']*?)')""")
+
 
 @environmentfilter
 def shorten(env, text, *args, **kwargs):
     if isinstance(text, Markdown):
-        text.source = do_truncate(env, text.source, *args,**kwargs)
+        text.source = do_truncate(env, text.source, *args, **kwargs)
     elif isinstance(text, Markup):
         # text = Markup(do_truncate(env, text, *args, **kwargs))
         pass
     else:
-        text = do_truncate(env, text, *args,**kwargs)
+        text = do_truncate(env, text, *args, **kwargs)
     return text
+
 
 def page_slugs(c):
     if "@" not in c.path:
@@ -43,13 +44,55 @@ def page_slugs(c):
     s = c.path.split("@")
     return [*s[:-1], "page", s[-1]]
 
-def lastmod(record):
+
+def mergedict(d, **kwargs):
+    return {**d, **kwargs}
+
+
+def tostyles(d):
+    def csskey(k):
+        return k.replace("_", "-").lower()
+
+    return ";".join(f"{csskey(k)}={escape(v)}" for k, v in d.items())
+
+
+def lastmod(record, format=None):
     if record.is_attachment:
         fn = record.attachment_filename
     else:
         fn = record.source_filename
     mtime = os.stat(fn).st_mtime
-    return datetime.fromtimestamp(mtime,tz=local_timezone).isoformat()
+    dt = datetime.fromtimestamp(mtime, tz=local_timezone)
+    if format:
+        return dt.strftime(format)
+    return dt.isoformat()
+
+
+def add_script(record, src, embed=False, **kwargs):
+    if not hasattr(record, "_js"):
+        record._js = dict(links={}, embed={})
+    if embed:
+        js = record._js["embed"]
+        js[src] = True
+    else:
+        js = record._js["links"]
+        js[src] = kwargs.get("async", False)
+    return ""
+
+
+def gen_js(record):
+    if not record or not hasattr(record, "_js"):
+        return ""
+    js = record._js
+    ret = []
+    for src, async_ in js["links"].items():
+        s = f'<script src="{escape(src)}"{" async" if async_ else ""}></script>'
+        ret.append(s)
+    for src in js["embed"]:
+        s = "<script>{src}</script>"
+        ret.append(s)
+    return Markup("\n".join(ret))
+
 
 def parse_args(s):
     # we need to deal with spaces in quoted strings
@@ -119,7 +162,6 @@ C = """<div class="alert alert-{}">
 
 # see https://github.com/lektor/lektor-markdown-admonition/blob/master/lektor_markdown_admonition.py
 class AdmonitionMixin:
-
     def paragraph(self, text):
         match = _prefix_re.match(text)
         if match is None:
@@ -130,27 +172,39 @@ class AdmonitionMixin:
 
 A = re.compile("^@([0-9]+)$")
 
+
 def shortcode(m):
     code = m.group(1).strip()
     args, kwargs = parse_args(code)
     cmd, *args = args
     # return f"<code>{cmd}: *{args}, **{kwargs}</code>"
     return render(cmd, args, kwargs)
-N = re.compile('w-[^0-9]*([0-9]+)$')
-def get_width(classes):
-    width = [w for w in classes if w.startswith('w-')]
+
+
+N = re.compile("w-[^0-9]*([0-9]+)$")
+
+
+def get_width(classes, kwargs):
+    if "width" in kwargs:
+        width = kwargs["width"]
+        if width.endswith("px"):
+            width = width[:-2]
+        if width.isdigit():
+            return int(width)
+    width = [w for w in classes if w.startswith("w-")]
     if not width:
         return 1
     w = width[0]
     m = N.match(w)
     if not m:
         return 1
-    return int(m.group(1))/100.
+    return int(m.group(1)) / 100.0
+
 
 class ShortcodesMixin:
     name = "Markdown Shortcodes"
     description = "Embeds shortcodes in Markdown."
-    
+
     SEP = ":"
     IMG_WIDTH = 800
     SHORTCODE = SHORTCODE
@@ -161,7 +215,7 @@ class ShortcodesMixin:
         # if we have a config file
         # get_ctx().record_dependency(self.config_filename)
         def getsrc(path):
-            return  self.record.url_to("!" + path, base_url=get_ctx().base_url)
+            return self.record.url_to("!" + path, base_url=get_ctx().base_url)
 
         att = A.match(src)
         if not att and self.SEP not in alt:
@@ -169,7 +223,7 @@ class ShortcodesMixin:
 
         alt, rest = alt.split(self.SEP, 1)
         args, kwargs = parse_args(rest)
-        width = get_width(args)
+        width = get_width(args, kwargs)
         img = None
         if self.record is not None:
             if att:
@@ -178,10 +232,15 @@ class ShortcodesMixin:
             else:
                 url = url_parse(src)
                 if not url.scheme:
-                    p = src if src.startswith('/') else '/' + src
-                    img = self.record.attachments.images.filter((F._path == p) | (F.description == src)).first()
+                    p = src if src.startswith("/") else "/" + src
+                    img = self.record.attachments.images.filter(
+                        (F._path == p) | (F.description == src)
+                    ).first()
             if img:
-                img = img.thumbnail(width=self.IMG_WIDTH * width)
+                if width > 1:  # from width=30px kwargs
+                    img = img.thumbnail(width=width)
+                else:
+                    img = img.thumbnail(width=self.IMG_WIDTH * width)
                 src = getsrc(img.url_path)
 
         src = escape(src)
@@ -209,9 +268,9 @@ class ShortcodesMixin:
             url = url_parse(link)
             if not url.scheme:
                 link = self.record.url_to("!" + link, base_url=get_ctx().base_url)
-        
+
         link = escape(link)
-        style = "; ".join(f"{k}:{v}" for k, v in kwargs.items())
+        style = tostyles(kwargs)
         cls = " ".join(args)
         attrs = [
             f'{attr}="{value}"'
@@ -235,56 +294,58 @@ class ShortcodesMixin:
         if t == text:
             return super().text(text)
         return self.inline_html(t)
-            
-
-
 
 
 class ReadMore:
-
     def __init__(self, config):
         self.config = config
-        self.display_link = config.get('display-link','no').lower() in {'true', '1', 'y', 'yes'}
-
-
+        self.display_link = config.get("display_link", "no").lower() in {
+            "true",
+            "1",
+            "y",
+            "yes",
+        }
 
     def spilt_text(self, split=None):
-        split_text = split if split is not None else self.config.get("split-text", '---')
+        split_text = (
+            split if split is not None else self.config.get("split_text", "---")
+        )
         split_text = "\n{}\n".format(split_text)
         return split_text
 
-
     def link_text(self, post, link):
-        link_text = self.config.get("link-text", '<br/>[{TEXT}]({URL_PATH})')
-        text = link if isinstance(link, str) else 'Read Full Post'
-        link_text = link_text.format(URL_PATH=post.url_path, TEXT=text)
+        link_text = self.config.get("link_text", "<br/>[{TEXT}]({URL_PATH})")
+        text = link if isinstance(link, str) else "Read Full Post"
+        ctx = get_ctx()
+        url = ctx.url_to(post)
+        link_text = link_text.format(URL_PATH=url, TEXT=text)
         return link_text
 
-
-    def process_post(self, post, key='body', link=True, split=None):
+    def process_post(self, post, key="body", link=True, split=None):
         # body_type = post.datamodel.field_map[key].type.name
         body = post._data[key]
-        
-        skey = f'{key}_short'
-        
+
+        skey = f"{key}_short"
+
         text_full = body.source
 
         split_text = self.spilt_text(split)
         contains_split = split_text in text_full
         if contains_split:
             short = deepcopy(body)
-            split = text_full.split(split_text)
+            split = text_full.split(split_text, 1)
             short.source = split[0]
             post._data[skey] = short
-            body.source = '\n\n'.join(split)
+            body.source = "\n\n".join(split)
 
             if link or self.display_link:
                 short.source += self.link_text(post, link)
 
         return post
 
-    def __call__(self, post, key='body', link=True, split=None):
+    def __call__(self, post, key="body", link=True, split=None):
         return self.process_post(post, key, link, split=split)
+
 
 class ShortcodesPlugin(Plugin):
     name = "shortcodes"
@@ -293,16 +354,21 @@ class ShortcodesPlugin(Plugin):
     def on_markdown_config(self, config=None, extra_flags=None):
         # click.secho(f"markdownconfig {config}", fg='yellow', bold=True)
         if config:
-            self.update_markdown()
-            config.renderer_mixins.append(ShortcodesMixin)
+
+            class M(ShortcodesMixin):
+                SEP = self.md_config["SEP"]
+                IMG_WIDTH = self.md_config["IMG_WIDTH"]
+                SHORTCODE = self.md_config["SHORTCODE"]
+
+            config.renderer_mixins.append(M)
             config.renderer_mixins.append(AdmonitionMixin)
-    
+
         return extra_flags
-    
-    # def on_before_build(self, builder, build_state, source, prog, extra_flags=None):
-    #     if isinstance(source, Page):
-    #         source._shortcodes = {}
-    #     return extra_flags
+
+    def on_before_build(self, builder, build_state, source, prog, extra_flags=None):
+        if source and hasattr(source, "_js"):
+            del source._js
+        return extra_flags
 
     # def on_after_build(self, builder, build_state, source, prog, extra_flags=None):
     #     if isinstance(source, Page):
@@ -311,10 +377,9 @@ class ShortcodesPlugin(Plugin):
     #         del source._shortcodes
     #     return extra_flags
 
-    def update_markdown(self):
-        for k,v in self.md_config.items():
-            setattr(ShortcodesMixin,k,v)
-
+    # def update_markdown(self):
+    #     for k,v in self.md_config.items():
+    #         setattr(ShortcodesMixin,k,v)
 
     def patch(self, settings):
         sep = settings.get("separator")
@@ -334,7 +399,7 @@ class ShortcodesPlugin(Plugin):
             shortcode = re.compile(shortcode)
         else:
             shortcode = ShortcodesMixin.SHORTCODE
-        self.md_config = dict(SEP=sep, WIDTH=width, SHORTCODE=shortcode)
+        self.md_config = dict(SEP=sep, IMG_WIDTH=width, SHORTCODE=shortcode)
 
     def on_setup_env(self, extra_flags=None):
         # maybe on process-template-context context, values
@@ -343,23 +408,26 @@ class ShortcodesPlugin(Plugin):
         config = self.get_config()
         self.patch(config)
 
-
         # session = requests.Session()
         def get_json(url, params, **kwargs):
             return requests.get(url, params=params, **kwargs).json()
-
 
         # for e.g. tweet shortcode
         self.env.jinja_env.globals["json_request"] = get_json
         # e.g kwargs | mergedict(a=1, c=2)
         # because we can't do {**kwargs, a:1, c:2}
-        self.env.jinja_env.filters.update({
-            "mergedict": lambda d, **kwargs: {**d, **kwargs},
-            "page_slugs" : page_slugs,
-            "lastmod" : lastmod,
-            "shorten" : shorten,
-            "readmore": ReadMore(config.section_as_dict('readmore'))
-            })
+        self.env.jinja_env.filters.update(
+            {
+                "mergedict": mergedict,
+                "page_slugs": page_slugs,
+                "lastmod": lastmod,
+                "shorten": shorten,
+                "readmore": ReadMore(config.section_as_dict("readmore")),
+                "add_script": add_script,
+                "gen_js": gen_js,
+                "tostyles": tostyles,
+            }
+        )
 
-        click.secho(f'shortcodes initialised!', fg="green", bold=True)
+        click.secho(f"shortcodes initialised!", fg="green", bold=True)
         return extra_flags

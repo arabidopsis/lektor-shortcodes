@@ -1,6 +1,6 @@
 # shortcodes
 
-Add Hugo style "shortcodes" to lektor e.g.
+Adds -- among other things -- Hugo style "shortcodes" to lektor e.g.
 
 `{{ youtube rXZGDADbdad w-50 float-right m-2 }}`
 
@@ -28,7 +28,8 @@ For example for the `shortcodes/youtube.html` you might have for
 bootstrap:
 
 ```html
-<div class="embed-responsive embed-responsive-16by9 {{args[1:]|join(' ')}}">
+<div class="embed-responsive embed-responsive-16by9 {{args[1:]|join(' ')}}"
+    style="{{kwargs|tostyles}}">
 <iframe
     src="https://www.youtube.com/embed/{{args[0]}}"
     class="embed-responsive-item"
@@ -38,6 +39,16 @@ bootstrap:
 </iframe>
 </div>
 ```
+
+If your short code requires a javascript library then add say:
+a `{{this|add_script('https://platform.twitter.com/widgets.js', async=True)}}`
+
+to your shortcode template. Then in the main `page.html` add
+a `{{this|gen_js() }}` before the final `</body>` end tag. The js
+will only be added if the short code was invoked on the page.
+
+To embed some java script use
+`{{this|add_script('const y = 2', embed=True)}}`.
 
 A sufficiently modern css framework should permit you to style any shortcode
 with simple class names.
@@ -52,23 +63,69 @@ You can alter the special separator (here `:`) in `configs/shortcodes.ini`:
 
 ```ini
 
-separator = @
+separator = :
 img_width = 800
-# don't do scaling
-img_width = none
+# or don't do scaling
+# img_width = none
 # expects a single grouping representing the body of the short code
 shortcodes = {{(.*?)}}
+
 ```
 
-Also checks for `is_dark_theme` in
-the `[theme_settings]` section of the
-project file
+## Read More
+
+Usage: `{{this|readmore(key='body', link='Read more At', split='--readmore--' )}}`
+
+Adds a `{key}_short` attribute to `this` which is the text
+before the `split` text. It also removes the split text from the body.
+
+Defaults can be set in the `[readmore]` section:
+
+```ini
+[readmore]
+# globally display links -- overridden by argument
+display_link = yes
+
+# uses python format braces
+link_text = '<br>[{TEXT}]({URL_PATH})'
+# or skip the text
+link_text = '<br/>[Read More]({URL_PATH})'
+# split on the first '---'
+split_text = '---'
+
+```
+
+## Miscellaeneous Filters/Globals
+
+* `lastmod`: Last modification time of the source document e.g. `{{this|lastmod(format='%Y-%m-%d %H:%M')}}` default is
+  isoformat.
+* `json_request`: *not* a filter. Make a json request to a website e.g. used with the twitter
+  short code.
+
+For example `tweet.html` is:
+  
+```jinja
+{# most useful are: align={left,right,center,none} theme={light,dark} #}
+{% set is_dark_theme = config.THEME_SETTINGS.is_dark_theme == 'true' %}
+{% set url = 'https://twitter.com/' + args[0] %}
+{# omit_script so we place it at the end of the document #}
+{% set params = kwargs | mergedict(url=url, dnt='true', omit_script='true', theme='dark' if is_dark_theme else 'light') %}
+{{json_request('https://publish.twitter.com/oembed', params=params).html | safe}}
+{{this | add_script('https://platform.twitter.com/widgets.js', async=True)}}
+```
 
 ## Installation
 
-place this package in the directory packages maybe with
+place this package in the directory `packages` maybe with
 
 ```bash
 git submodule add https://github.com/arabidopsis/lektor-shortcodes.git packages/shortcodes
 lektor plugins reinstall
+```
+
+or add to `[packages]` section of project or theme
+
+```ini
+[packages]
+https://github.com/arabidopsis/lektor-shortcodes/archive/main.tar.gz = ""
 ```
