@@ -434,5 +434,7 @@ class ShortcodesPlugin(Plugin):
             }
         )
 
-        click.secho(f"shortcodes initialised!", fg="green", bold=True)
+        t = datetime.now().isoformat()
+
+        click.secho(f"shortcodes initialised @ {t}!", fg="green", bold=True)
         return extra_flags
