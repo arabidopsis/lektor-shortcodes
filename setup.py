@@ -14,6 +14,9 @@ with open("lektor_shortcodes.py", "rb") as f:
         ast.literal_eval(_description_re.search(f.read().decode("utf-8")).group(1))
     )
 
+# note that this does require requests
+# but the way it is installed via lektor we don't need
+# to specifiy it since lektor itself depends on it
 setup(
     author="Ian Castleden",
     author_email="ian.castleden@gmail.com",
@@ -23,9 +26,9 @@ setup(
     long_description=readme,
     long_description_content_type="text/markdown",
     name="lektor-shortcodes",
-    install_requires=[
-            'requests'
-        ],
+    # install_requires=[
+    #         'requests'
+    #     ],
     packages=find_packages(),
     py_modules=["lektor_shortcodes"],
     url="https://github.com/arabidopsis/lektor-shortcodes",

@@ -19,7 +19,8 @@ The full code is:
 
 The plugin invokes a template of the name `shortcodes/{command}.html`
 where the variables available will be the dictionary
-`{**kwargs, args:args, kwargs:kwargs}`.
+`{**kwargs, args:args, kwargs:kwargs}`. (So if you have a key called `args` or `kwargs` you will have
+to fish it out of kwargs e.g. `kwargs.kwargs` or `kwargs.args`)
 
 Short codes are meant to be *short* You can change the braces using
 `shortcodes` configuration variable.
@@ -41,14 +42,17 @@ bootstrap:
 ```
 
 If your short code requires a javascript library then add say:
-a `{{this|add_script('https://platform.twitter.com/widgets.js', async=True)}}`
+
+```jinja
+{{this|add_script('https://platform.twitter.com/widgets.js', async=True)}}
+```
 
 to your shortcode template. Then in the main `page.html` add
 a `{{this|gen_js() }}` before the final `</body>` end tag. The js
 will only be added if the short code was invoked on the page.
 
 To embed some java script use
-`{{this|add_script('const y = 2', embed=True)}}`.
+`{{this|add_script('window.myglobal = 2', embed=True)}}`.
 
 A sufficiently modern css framework should permit you to style any shortcode
 with simple class names.
@@ -74,7 +78,11 @@ shortcodes = {{(.*?)}}
 
 ## Read More
 
-Usage: `{{this|readmore(key='body', link='Read more At', split='--readmore--' )}}`
+Usage:
+
+```jinja
+{{this|readmore(key='body', link='Read more At', split='--readmore--' )}}
+```
 
 Adds a `{key}_short` attribute to `this` which is the text
 before the `split` text. It also removes the split text from the body.
@@ -87,7 +95,7 @@ Defaults can be set in the `[readmore]` section:
 display_link = yes
 
 # uses python format braces
-link_text = '<br>[{TEXT}]({URL_PATH})'
+link_text = '<br/>[{TEXT}]({URL_PATH})'
 # or skip the text
 link_text = '<br/>[Read More]({URL_PATH})'
 # split on the first '---'
@@ -120,7 +128,7 @@ place this package in the directory `packages` maybe with
 
 ```bash
 git submodule add https://github.com/arabidopsis/lektor-shortcodes.git packages/shortcodes
-lektor plugins reinstall
+# or just git clone ...
 ```
 
 or add to `[packages]` section of project or theme

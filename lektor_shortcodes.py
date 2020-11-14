@@ -5,7 +5,7 @@ from copy import deepcopy
 from lektor.pluginsystem import Plugin
 from lektor.context import get_ctx
 from lektor.markdown import Markdown
-from lektor.db import F, Page
+from lektor.db import F
 from jinja2 import TemplateNotFound
 from jinja2.filters import environmentfilter, do_truncate
 from markupsafe import escape
@@ -49,11 +49,19 @@ def mergedict(d, **kwargs):
     return {**d, **kwargs}
 
 
+def split(s, sep=None):  # pylint: disable=unused-variable
+    return [] if not s else (s.split(sep) if sep is not None else s.split())
+
+
 def tostyles(d):
     def csskey(k):
         return k.replace("_", "-").lower()
 
-    return ";".join(f"{csskey(k)}={escape(v)}" for k, v in d.items())
+    return ";".join(f"{csskey(k)}:{str(v)}" for k, v in d.items())
+
+
+def toargs(d):
+    return "&".join(f"{k}={str(v)}" for k, v in d.items())
 
 
 def lastmod(record, format=None):
@@ -97,7 +105,7 @@ def gen_js(record):
 def parse_args(s):
     # we need to deal with spaces in quoted strings
     # so we convert all quoted strings to a token '####{i}####'
-    # that has no space
+    # that has no spaces
     quoted = {}
 
     def map_quotes(m):
@@ -140,11 +148,6 @@ def render(cmd, args, kwargs):
         )
     except TemplateNotFound:
         return f'[could not find "shortcode/{cmd}.html" template]'
-
-
-def fix_src(url):
-
-    return url.geturl()
 
 
 _prefix_re = re.compile(r"^\s*(!{1,4})\s+")
@@ -426,6 +429,8 @@ class ShortcodesPlugin(Plugin):
                 "add_script": add_script,
                 "gen_js": gen_js,
                 "tostyles": tostyles,
+                "toargs": toargs,
+                "split": split,
             }
         )
 
