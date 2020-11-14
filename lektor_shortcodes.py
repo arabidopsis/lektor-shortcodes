@@ -319,9 +319,9 @@ class ReadMore:
     def link_text(self, post, link):
         link_text = self.config.get("link_text", "<br/>[{TEXT}]({URL_PATH})")
         text = link if isinstance(link, str) else "Read Full Post"
-        ctx = get_ctx()
-        url = ctx.url_to(post)
-        link_text = link_text.format(URL_PATH=url, TEXT=text)
+        # ctx = get_ctx()
+        # url = ctx.url_to(post)
+        link_text = link_text.format(URL_PATH=post.url_path, TEXT=text)
         return link_text
 
     def process_post(self, post, key="body", link=True, split=None):
