@@ -435,6 +435,9 @@ class ShortcodesPlugin(Plugin):
         )
 
         t = datetime.now().isoformat()
+        path = os.environ.get("PATH")
 
-        click.secho(f"shortcodes initialised @ {t}!", fg="green", bold=True)
+        click.secho(
+            f"shortcodes initialised @ {t} with PATH={path}", fg="green", bold=True
+        )
         return extra_flags
