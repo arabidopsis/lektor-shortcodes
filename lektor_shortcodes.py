@@ -2,6 +2,7 @@
 import re
 import os
 from copy import deepcopy
+from urllib.parse import urlencode
 from lektor.pluginsystem import Plugin
 from lektor.context import get_ctx
 from lektor.markdown import Markdown
@@ -50,7 +51,7 @@ def mergedict(d, **kwargs):
 
 
 def split(s, sep=None):  # pylint: disable=unused-variable
-    return [] if not s else (s.split(sep) if sep is not None else s.split())
+    return [] if not s else str(s).split(sep)
 
 
 def tostyles(d):
@@ -58,10 +59,6 @@ def tostyles(d):
         return k.replace("_", "-").lower()
 
     return ";".join(f"{csskey(k)}:{str(v)}" for k, v in d.items())
-
-
-def toargs(d):
-    return "&".join(f"{k}={str(v)}" for k, v in d.items())
 
 
 def lastmod(record, format=None):
@@ -429,7 +426,7 @@ class ShortcodesPlugin(Plugin):
                 "add_script": add_script,
                 "gen_js": gen_js,
                 "tostyles": tostyles,
-                "toargs": toargs,
+                "urlencode": lambda *args, **kwargs: Markup(urlencode(*args, **kwargs)),
                 "split": split,
             }
         )
