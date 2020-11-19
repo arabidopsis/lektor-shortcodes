@@ -74,6 +74,11 @@ img_width = 800
 # expects a single grouping representing the body of the short code
 shortcodes = {{(.*?)}}
 
+# contact forms
+# {{contact-form action=honeybee }}
+[actions]
+honeybee = "https://honeybeehealthresearch.org/app/honeybee/contact-form"
+
 ```
 
 ## Read More

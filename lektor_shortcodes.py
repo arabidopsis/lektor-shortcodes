@@ -13,6 +13,7 @@ from markupsafe import escape
 from werkzeug.urls import url_parse
 from datetime import datetime
 from markupsafe import Markup
+from mistune import BlockLexer
 import click
 
 
@@ -22,9 +23,8 @@ local_timezone = datetime.utcnow().astimezone().tzinfo
 # see https://github.com/lektor/lektor-markdown-highlighter/blob/master/lektor_markdown_highlighter.py
 # for case where we need to register dependencies
 
-SHORTCODE = re.compile(r"{{(.*?)}}")
 
-QUOTES = re.compile(r"""(?:"([^"]*?)"|'([^']*?)')""")
+# jinja filters --------------------
 
 
 @environmentfilter
@@ -73,14 +73,23 @@ def lastmod(record, format=None):
     return dt.isoformat()
 
 
-def add_script(record, src, embed=False, **kwargs):
+def add_script(record, src, embed=False, template=False, jquery=True, **kwargs):
+    src = src.strip()
+    if not src:
+        return ""
     if not hasattr(record, "_js"):
-        record._js = dict(links={}, embed={})
+        record._js = dict(links={}, embed={}, templates={})
+    J = record._js
     if embed:
-        js = record._js["embed"]
+        js = J["embed"]
+        if jquery:
+            src = "jQuery(function($) { %s })" % src
+        js[src] = True
+    elif template:
+        js = J["templates"]
         js[src] = True
     else:
-        js = record._js["links"]
+        js = J["links"]
         js[src] = kwargs.get("async", False)
     return ""
 
@@ -94,12 +103,18 @@ def gen_js(record):
         s = f'<script src="{escape(src)}"{" async" if async_ else ""}></script>'
         ret.append(s)
     for src in js["embed"]:
-        s = "<script>{src}</script>"
+        s = f"<script>{src}</script>"
+        ret.append(s)
+    for src in js["templates"]:
+        s = js_template(src)
         ret.append(s)
     return Markup("\n".join(ret))
 
 
-def parse_args(s):
+QUOTES = re.compile(r"""("([^"]*?)"|'([^']*?)')""")
+
+
+def parse_args(sargs):
     # we need to deal with spaces in quoted strings
     # so we convert all quoted strings to a token '####{i}####'
     # that has no spaces
@@ -118,13 +133,25 @@ def parse_args(s):
             return int(v)
         return v
 
-    s = QUOTES.sub(map_quotes, s)
+    s = QUOTES.sub(map_quotes, sargs)
     args = s.split()  # now we can split
     kwargs = dict(a.split("=", 1) for a in args if "=" in a)
     args = [a for a in args if "=" not in a]
     kwargs = {k: fix_val(v) for k, v in kwargs.items()}
     args = [fix_val(v) for v in args]
     return args, kwargs
+
+
+def js_template(name):
+    t = (
+        """
+        <script>
+        {%% include "%s" %%}
+        </script>
+    """
+        % name
+    )
+    return get_ctx().env.jinja_env.from_string(t).render()
 
 
 def render(cmd, args, kwargs):
@@ -145,6 +172,25 @@ def render(cmd, args, kwargs):
         )
     except TemplateNotFound:
         return f'[could not find "shortcode/{cmd}.html" template]'
+
+
+def shortcode(m):
+    code = m.group(1).strip()
+    args, kwargs = parse_args(code)
+    cmd, *args = args
+    # return f"<code>{cmd}: *{args}, **{kwargs}</code>"
+    return render(cmd, args, kwargs)
+
+
+class ShortcodeLexer(BlockLexer):
+    def __init__(self, regexp, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rules.shortcode = regexp
+        if "shortcode" not in self.default_rules:
+            self.default_rules.insert(1, "shortcode")
+
+    def parse_shortcode(self, match):
+        self.tokens.append({"type": "close_html", "text": shortcode(match)})
 
 
 _prefix_re = re.compile(r"^\s*(!{1,4})\s+")
@@ -173,14 +219,6 @@ class AdmonitionMixin:
 A = re.compile("^@([0-9]+)$")
 
 
-def shortcode(m):
-    code = m.group(1).strip()
-    args, kwargs = parse_args(code)
-    cmd, *args = args
-    # return f"<code>{cmd}: *{args}, **{kwargs}</code>"
-    return render(cmd, args, kwargs)
-
-
 N = re.compile("w-[^0-9]*([0-9]+)$")
 
 
@@ -207,7 +245,7 @@ class ShortcodesMixin:
 
     SEP = ":"
     IMG_WIDTH = 800
-    SHORTCODE = SHORTCODE
+    SHORTCODE = re.compile(r"{{(.*?)}}")
 
     def image(self, src, title, alt):
         # title must be quoted
@@ -283,11 +321,11 @@ class ShortcodesMixin:
         ]
         return f"""<a href="{link}" {' '.join(attrs)}/>{text}</a>"""
 
-    def paragraph(self, text):
-        # if we have a config file
-        # get_ctx().record_dependency(self.config_filename)
+    # def paragraph(self, text):
+    #     # if we have a config file
+    #     # get_ctx().record_dependency(self.config_filename)
 
-        return super().paragraph(self.SHORTCODE.sub(shortcode, text))
+    #     return super().paragraph(self.SHORTCODE.sub(shortcode, text))
 
     def text(self, text):
         t = self.SHORTCODE.sub(shortcode, text)
@@ -362,6 +400,7 @@ class ShortcodesPlugin(Plugin):
 
             config.renderer_mixins.append(M)
             config.renderer_mixins.append(AdmonitionMixin)
+            config.options["block"] = ShortcodeLexer(self.md_config["SHORTCODE"])
 
         return extra_flags
 
@@ -407,6 +446,12 @@ class ShortcodesPlugin(Plugin):
 
         config = self.get_config()
         self.patch(config)
+        actions = config.section_as_dict("actions")
+
+        def action_url(action):
+            if action not in actions:
+                return ""
+            return actions[action]
 
         # session = requests.Session()
         def get_json(url, params, **kwargs):
@@ -428,6 +473,7 @@ class ShortcodesPlugin(Plugin):
                 "tostyles": tostyles,
                 "urlencode": lambda *args, **kwargs: Markup(urlencode(*args, **kwargs)),
                 "split": split,
+                "action_url": action_url,
             }
         )
 
