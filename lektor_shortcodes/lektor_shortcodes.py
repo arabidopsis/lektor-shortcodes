@@ -131,7 +131,7 @@ def parse_args(sargs):
     def map_quotes(m):
         i = len(quoted)
         k = f"#######{i}#######"
-        quoted[k] = m.group(1) or m.group(2)
+        quoted[k] = m.group(2) or m.group(3)
         return k
 
     def fix_val(v):
@@ -145,7 +145,7 @@ def parse_args(sargs):
     args = s.split()  # now we can split
     kwargs = dict(a.split("=", 1) for a in args if "=" in a)
     args = [a for a in args if "=" not in a]
-    kwargs = {k: fix_val(v) for k, v in kwargs.items()}
+    kwargs = {fix_val(k): fix_val(v) for k, v in kwargs.items()}
     args = [fix_val(v) for v in args]
     return args, kwargs
 
