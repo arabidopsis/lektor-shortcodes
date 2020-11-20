@@ -15,7 +15,7 @@ class ReadMore:
         split_text = (
             split if split is not None else self.config.get("split_text", "---")
         )
-        split_text = "\n{}\n".format(split_text)
+        split_text = f"\n{split_text}\n"
         return split_text
 
     def link_text(self, post, link):

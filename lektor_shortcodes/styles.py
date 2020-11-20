@@ -1,6 +1,8 @@
 # the class Styles is added to the global jinja2 template rendering state as "styles"
 # see fragments/styles.css
-from colour import Color as BaseColor, color_scale
+from colour import Color as BaseColor
+
+# from colour import color_scale
 
 
 def clamp(c):
@@ -52,4 +54,3 @@ if __name__ == "__main__":
     import sys
 
     print(Color(sys.argv[1])("darken", 0.2)("saturate", 0.2))
-

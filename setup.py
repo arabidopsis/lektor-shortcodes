@@ -1,7 +1,6 @@
+from setuptools import find_packages, setup
 
-from setuptools import setup, find_packages
-
-with open("README.md", "rt", encoding="utf8") as f:
+with open("README.md", encoding="utf8") as f:
     readme = f.read()
 
 
@@ -20,8 +19,8 @@ setup(
     packages=find_packages(),
     url="https://github.com/arabidopsis/lektor-shortcodes",
     version="0.1",
-    classifiers=["Framework :: Lektor", "Environment :: Plugins",],
+    classifiers=["Framework :: Lektor", "Environment :: Plugins"],
     entry_points={
-        "lektor.plugins": ["shortcodes = lektor_shortcodes:ShortcodesPlugin",]
+        "lektor.plugins": ["shortcodes = lektor_shortcodes:ShortcodesPlugin"]
     },
 )

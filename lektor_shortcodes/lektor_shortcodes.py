@@ -1,21 +1,19 @@
-# -*- coding: utf-8 -*-
-import re
 import os
-from lektor.pluginsystem import Plugin
-from lektor.context import get_ctx
-from lektor.markdown import Markdown
-from lektor.db import F
-from jinja2 import TemplateNotFound
-from jinja2.filters import environmentfilter, do_truncate
-from markupsafe import escape
-from werkzeug.urls import url_parse
+import re
 from datetime import datetime
-from markupsafe import Markup
-from mistune import BlockLexer
+
 import click
+from jinja2 import TemplateNotFound
+from jinja2.filters import do_truncate, environmentfilter
+from lektor.context import get_ctx
+from lektor.db import F
+from lektor.markdown import Markdown
+from lektor.pluginsystem import Plugin
+from markupsafe import Markup, escape
+from mistune import BlockLexer
+from werkzeug.urls import url_parse
 
 from .readmore import ReadMore
-
 
 local_timezone = datetime.utcnow().astimezone().tzinfo
 
@@ -198,6 +196,8 @@ C = """<div class="alert alert-{}">
 </div>"""
 
 # see https://github.com/lektor/lektor-markdown-admonition/blob/master/lektor_markdown_admonition.py
+
+
 class AdmonitionMixin:
     def paragraph(self, text):
         match = _prefix_re.match(text)
@@ -289,7 +289,7 @@ class ShortcodesMixin:
         return f"""<img src="{src}" {' '.join(attrs)}/>"""
 
     def link(self, link, title, text):
-        if not self.SEP in text:
+        if self.SEP not in text:
             return super().link(link, title, text)
         text, rest = text.split(self.SEP, 1)
         args, kwargs = parse_args(rest)
