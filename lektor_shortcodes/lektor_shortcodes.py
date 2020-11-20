@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 
 import click
+import requests
 from jinja2 import TemplateNotFound
 from jinja2.filters import do_truncate, environmentfilter
 from lektor.context import get_ctx
@@ -231,8 +232,6 @@ def get_width(classes, kwargs):
 
 
 class ShortcodesMixin:
-    name = "Markdown Shortcodes"
-    description = "Embeds shortcodes in Markdown."
 
     SEP = ":"
     IMG_WIDTH = 800
@@ -338,8 +337,7 @@ class ShortcodesPlugin(Plugin):
                 IMG_WIDTH = self.md_config["IMG_WIDTH"]
                 SHORTCODE = self.md_config["SHORTCODE"]
 
-            config.renderer_mixins.append(M)
-            config.renderer_mixins.append(AdmonitionMixin)
+            config.renderer_mixins.extend([M, AdmonitionMixin])
             # also for inline
             config.options["block"] = ShortcodeLexer(self.md_config["SHORTCODE"])
 
@@ -383,7 +381,6 @@ class ShortcodesPlugin(Plugin):
 
     def on_setup_env(self, extra_flags=None):
         # maybe on process-template-context context, values
-        import requests
 
         config = self.get_config()
         self.make_md_config(config)
