@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
 import os
-from copy import deepcopy
-from urllib.parse import urlencode
 from lektor.pluginsystem import Plugin
 from lektor.context import get_ctx
 from lektor.markdown import Markdown
@@ -15,6 +13,8 @@ from datetime import datetime
 from markupsafe import Markup
 from mistune import BlockLexer
 import click
+
+from .readmore import ReadMore
 
 
 local_timezone = datetime.utcnow().astimezone().tzinfo
@@ -95,6 +95,12 @@ def add_script(record, src, embed=False, template=False, jquery=True, **kwargs):
 
 
 def gen_js(record):
+    ctx = get_ctx()
+
+    def js_template(name):
+        t = """<script>{%% include "%s" %%}</script>""" % name
+        return ctx.env.jinja_env.from_string(t).render()
+
     if not record or not hasattr(record, "_js"):
         return ""
     js = record._js
@@ -106,7 +112,10 @@ def gen_js(record):
         s = f"<script>{src}</script>"
         ret.append(s)
     for src in js["templates"]:
-        s = js_template(src)
+        try:
+            s = js_template(src)
+        except TemplateNotFound:
+            s = f"[shortcode template {src} not found]"
         ret.append(s)
     return Markup("\n".join(ret))
 
@@ -142,43 +151,25 @@ def parse_args(sargs):
     return args, kwargs
 
 
-def js_template(name):
-    t = (
-        """
-        <script>
-        {%% include "%s" %%}
-        </script>
-    """
-        % name
-    )
-    return get_ctx().env.jinja_env.from_string(t).render()
-
-
 def render(cmd, args, kwargs):
     try:
         ctx = get_ctx()
-        if ctx is None:
-            return f"[no lektor build context for {cmd}]"
         values = {**kwargs, "args": args, "kwargs": kwargs}
-        # ctx.record._shortcodes[cmd] = values
         return ctx.env.render_template(
-            [
-                f"shortcodes/{cmd}.html",
-                # "blocks/default.html",
-            ],
+            [f"shortcodes/{cmd}.html", "shortcode/default.html"],
             pad=ctx.pad,  # site object
             this=ctx.record,  # source object
             values=values,
         )
     except TemplateNotFound:
-        return f'[could not find "shortcode/{cmd}.html" template]'
+        # this is what lektor does with flow blocks...
+        return Markup(f'[could not find "shortcode/{cmd}.html" template]')
 
 
 def shortcode(m):
     code = m.group(1).strip()
     args, kwargs = parse_args(code)
     cmd, *args = args
-    # return f"<code>{cmd}: *{args}, **{kwargs}</code>"
     return render(cmd, args, kwargs)
 
 
@@ -186,7 +177,7 @@ class ShortcodeLexer(BlockLexer):
     def __init__(self, regexp, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rules.shortcode = regexp
-        if "shortcode" not in self.default_rules:
+        if "shortcode" not in self.default_rules:  # class list
             self.default_rules.insert(1, "shortcode")
 
     def parse_shortcode(self, match):
@@ -216,10 +207,10 @@ class AdmonitionMixin:
         return C.format(CLASSES[level], text[match.end() :],)
 
 
-A = re.compile("^@([0-9]+)$")
+PAGE_NUM = re.compile("^@([0-9]+)$")
 
 
-N = re.compile("w-[^0-9]*([0-9]+)$")
+BOOTSTRAP_WIDTH = re.compile("w-[^0-9]*([0-9]+)$")
 
 
 def get_width(classes, kwargs):
@@ -233,7 +224,7 @@ def get_width(classes, kwargs):
     if not width:
         return 1
     w = width[0]
-    m = N.match(w)
+    m = BOOTSTRAP_WIDTH.match(w)
     if not m:
         return 1
     return int(m.group(1)) / 100.0
@@ -255,7 +246,7 @@ class ShortcodesMixin:
         def getsrc(path):
             return self.record.url_to("!" + path, base_url=get_ctx().base_url)
 
-        att = A.match(src)
+        att = PAGE_NUM.match(src)
         if not att and self.SEP not in alt:
             return super().image(src, title, alt)
 
@@ -283,7 +274,7 @@ class ShortcodesMixin:
 
         src = escape(src)
         alt = escape(alt)
-        style = "; ".join(f"{k}:{v}" for k, v in kwargs.items())
+        style = escape(tostyles(kwargs))
         cls = " ".join(args)
         attrs = [
             f'{attr}="{value}"'
@@ -308,7 +299,7 @@ class ShortcodesMixin:
                 link = self.record.url_to("!" + link, base_url=get_ctx().base_url)
 
         link = escape(link)
-        style = tostyles(kwargs)
+        style = escape(tostyles(kwargs))
         cls = " ".join(args)
         attrs = [
             f'{attr}="{value}"'
@@ -334,57 +325,6 @@ class ShortcodesMixin:
         return self.inline_html(t)
 
 
-class ReadMore:
-    def __init__(self, config):
-        self.config = config
-        self.display_link = config.get("display_link", "no").lower() in {
-            "true",
-            "1",
-            "y",
-            "yes",
-        }
-
-    def spilt_text(self, split=None):
-        split_text = (
-            split if split is not None else self.config.get("split_text", "---")
-        )
-        split_text = "\n{}\n".format(split_text)
-        return split_text
-
-    def link_text(self, post, link):
-        link_text = self.config.get("link_text", "<br/>[{TEXT}]({URL_PATH})")
-        text = link if isinstance(link, str) else "Read Full Post"
-        # ctx = get_ctx()
-        # url = ctx.url_to(post)
-        link_text = link_text.format(URL_PATH=post.url_path, TEXT=text)
-        return link_text
-
-    def process_post(self, post, key="body", link=True, split=None):
-        # body_type = post.datamodel.field_map[key].type.name
-        body = post._data[key]
-
-        skey = f"{key}_short"
-
-        text_full = body.source
-
-        split_text = self.spilt_text(split)
-        contains_split = split_text in text_full
-        if contains_split:
-            short = deepcopy(body)
-            split = text_full.split(split_text, 1)
-            short.source = split[0]
-            post._data[skey] = short
-            body.source = "\n\n".join(split)
-
-            if link or self.display_link:
-                short.source += self.link_text(post, link)
-
-        return post
-
-    def __call__(self, post, key="body", link=True, split=None):
-        return self.process_post(post, key, link, split=split)
-
-
 class ShortcodesPlugin(Plugin):
     name = "shortcodes"
     description = "Embeds shortcodes in Markdown."
@@ -400,6 +340,7 @@ class ShortcodesPlugin(Plugin):
 
             config.renderer_mixins.append(M)
             config.renderer_mixins.append(AdmonitionMixin)
+            # also for inline
             config.options["block"] = ShortcodeLexer(self.md_config["SHORTCODE"])
 
         return extra_flags
@@ -420,7 +361,7 @@ class ShortcodesPlugin(Plugin):
     #     for k,v in self.md_config.items():
     #         setattr(ShortcodesMixin,k,v)
 
-    def patch(self, settings):
+    def make_md_config(self, settings):
         sep = settings.get("separator")
         if sep:
             sep = sep.strip()
@@ -445,7 +386,7 @@ class ShortcodesPlugin(Plugin):
         import requests
 
         config = self.get_config()
-        self.patch(config)
+        self.make_md_config(config)
         actions = config.section_as_dict("actions")
 
         def action_url(action):
@@ -471,7 +412,6 @@ class ShortcodesPlugin(Plugin):
                 "add_script": add_script,
                 "gen_js": gen_js,
                 "tostyles": tostyles,
-                "urlencode": lambda *args, **kwargs: Markup(urlencode(*args, **kwargs)),
                 "split": split,
                 "action_url": action_url,
             }
