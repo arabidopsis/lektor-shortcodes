@@ -296,7 +296,15 @@ class ShortcodesMixin:
             url = url_parse(link)
             if not url.scheme:
                 link = self.record.url_to("!" + link, base_url=get_ctx().base_url)
+        attrs = {}
 
+        if "-new-tab" in args:
+            args.remove("-new-tab")
+            attrs["target"] = "_blank"
+            attrs["rel"] = "noreferrer noopener"  # from MDN
+        if "target" in kwargs:
+            attrs["target"] = kwargs.pop("target")
+            attrs["rel"] = "noreferrer noopener"  # from MDN
         link = escape(link)
         style = escape(tostyles(kwargs))
         cls = " ".join(args)
@@ -306,6 +314,7 @@ class ShortcodesMixin:
                 ("style", style),
                 ("class", cls),
                 ("title", escape(title) if title else ""),
+                *list(attrs.items()),
             ]
             if value
         ]

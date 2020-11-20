@@ -119,6 +119,8 @@ split_text = '---'
 
 ## Miscellaeneous Filters/Globals
 
+The `-new-tab` argument for a link will create a `target="_blank"` on the link.
+
 * `shorten`: uses `jinja2:truncate` but understands `Markdown` and `Markup` objects
 * `mergedict`: e.g. `dict|mergedict(a=1,b=2)`. Same as `{**dict, a=1,b=2}`
 * `tostyles`: turn a dictionary into a set of styles (changing keys into kebab case).
@@ -155,3 +157,10 @@ or add to `[packages]` section of project or theme
 [packages]
 https://github.com/arabidopsis/lektor-shortcodes/archive/main.tar.gz = ""
 ```
+
+## Notes
+
+Combined with say Tachyons we can do
+things like:
+
+`follow me on [{{fab twitter p-3 bg-pink br-100 f3 white align-middle shadow grow}}: -new-tab](https://twitter.com/mememe) OK!`
