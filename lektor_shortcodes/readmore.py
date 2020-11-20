@@ -21,8 +21,6 @@ class ReadMore:
     def link_text(self, post, link):
         link_text = self.config.get("link_text", "<br/>[{TEXT}]({URL_PATH})")
         text = link if isinstance(link, str) else "Read Full Post"
-        # ctx = get_ctx()
-        # url = ctx.url_to(post)
         link_text = link_text.format(URL_PATH=post.url_path, TEXT=text)
         return link_text
 
@@ -35,8 +33,7 @@ class ReadMore:
         text_full = body.source
 
         split_text = self.spilt_text(split)
-        contains_split = split_text in text_full
-        if contains_split:
+        if split_text in text_full:
             short = deepcopy(body)
             split = text_full.split(split_text, 1)
             short.source = split[0]

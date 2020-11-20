@@ -205,7 +205,7 @@ class AdmonitionMixin:
         if match is None:
             return super().paragraph(text)
         level = len(match.group(1))
-        return C.format(CLASSES[level], text[match.end() :],)
+        return C.format(CLASSES[level], super().paragraph(text[match.end() :]),)
 
 
 PAGE_NUM = re.compile("^@([0-9]+)$")
@@ -415,9 +415,7 @@ class ShortcodesPlugin(Plugin):
         )
 
         t = datetime.now().isoformat()
-        path = os.environ.get("PATH")
+        # path = os.environ.get("PATH")
 
-        click.secho(
-            f"shortcodes initialised @ {t} with PATH={path}", fg="green", bold=True
-        )
+        click.secho(f"shortcodes initialised @ {t}", fg="green", bold=True)
         return extra_flags

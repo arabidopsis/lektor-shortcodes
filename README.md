@@ -48,11 +48,20 @@ If your short code requires a javascript library then add say:
 ```
 
 to your shortcode template. Then in the main `page.html` add
-a `{{this|gen_js() }}` before the final `</body>` end tag. The js
+a `{{ this|gen_js() }}` before the final `</body>` end tag. The js
 will only be added if the short code was invoked on the page.
 
-To embed some java script use
-`{{this|add_script('window.myglobal = 2', embed=True)}}`.
+To embed some java script use:
+
+```jinja
+`{{this|add_script('window.myglobal = 2', embed=True, jquery=False)}}`
+```
+
+To add a javascript template use:
+
+```jinja
+`{{this|add_script("shortcodes/form_validation.js", template=True)}}`
+```
 
 A sufficiently modern css framework should permit you to style any shortcode
 with simple class names.
@@ -86,13 +95,13 @@ honeybee = "https://honeybeehealthresearch.org/app/honeybee/contact-form"
 Usage:
 
 ```jinja
-{{this|readmore(key='body', link='Read more At', split='--readmore--' )}}
+{{this|readmore(key='body', link='Read more At', split='--readmore--' ).body_short}}
 ```
 
 Adds a `{key}_short` attribute to `this` which is the text
 before the `split` text. It also removes the split text from the body.
 
-Defaults can be set in the `[readmore]` section:
+Defaults for link and split can be set in the `[readmore]` section:
 
 ```ini
 [readmore]
@@ -103,13 +112,17 @@ display_link = yes
 link_text = '<br/>[{TEXT}]({URL_PATH})'
 # or skip the text
 link_text = '<br/>[Read More]({URL_PATH})'
-# split on the first '---'
+# split on the first paragraph of just '---'
 split_text = '---'
 
 ```
 
 ## Miscellaeneous Filters/Globals
 
+* `shorten`: uses `jinja2:truncate` but understands `Markdown` and `Markup` objects
+* `mergedict`: e.g. `dict|mergedict(a=1,b=2)`. Same as `{**dict, a=1,b=2}`
+* `tostyles`: turn a dictionary into a set of styles (changing keys into kebab case).
+  e.g. `style="{{dict|tostyles}}"`
 * `lastmod`: Last modification time of the source document e.g. `{{this|lastmod(format='%Y-%m-%d %H:%M')}}` default is
   isoformat.
 * `json_request`: *not* a filter. Make a json request to a website e.g. used with the twitter
