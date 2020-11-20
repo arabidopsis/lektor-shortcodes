@@ -211,7 +211,7 @@ class AdmonitionMixin:
 PAGE_NUM = re.compile("^@([0-9]+)$")
 
 
-BOOTSTRAP_WIDTH = re.compile("w-[^0-9]*([0-9]+)$")
+BOOTSTRAP_WIDTH = re.compile("^w-[^0-9]*([0-9]+)$")
 
 
 def get_width(classes, kwargs):
@@ -388,7 +388,7 @@ class ShortcodesPlugin(Plugin):
 
         def action_url(action):
             if action not in actions:
-                return ""
+                return action
             return actions[action]
 
         # session = requests.Session()
