@@ -72,14 +72,19 @@ def lastmod(record, format=None):
     return dt.isoformat()
 
 
-def add_script(record, src, embed=False, template=False, jquery=True, **kwargs):
+def add_script(
+    record, src, embed=False, template=False, jquery=True, css=False, **kwargs
+):
     src = src.strip()
     if not src:
         return ""
     if not hasattr(record, "_js"):
-        record._js = dict(links={}, embed={}, templates={})
+        record._js = dict(links={}, embed={}, templates={}, css={})
     J = record._js
-    if embed:
+    if css:
+        d = J["css"]
+        d[src] = True
+    elif embed:
         js = J["embed"]
         if jquery:
             src = "jQuery(function($) { %s })" % src
@@ -104,11 +109,15 @@ def gen_js(record):
         return ""
     js = record._js
     ret = []
+    for src in js["css"]:
+        js["templates"]["shortcodes/add_css.js"] = True
+        js["embed"][f'API.add_css("{escape(src)}")'] = True
+        # FIXME place this in head
+        # s = f'<link rel="stylesheet" href="{escape(src)}"/>'
+        # ret.append(s)
+
     for src, async_ in js["links"].items():
         s = f'<script src="{escape(src)}"{" async" if async_ else ""}></script>'
-        ret.append(s)
-    for src in js["embed"]:
-        s = f"<script>{src}</script>"
         ret.append(s)
     for src in js["templates"]:
         try:
@@ -116,10 +125,17 @@ def gen_js(record):
         except TemplateNotFound:
             s = f"[shortcode template {src} not found]"
         ret.append(s)
+
+    for src in js["embed"]:
+        s = f"<script>{src}</script>"
+        ret.append(s)
+
     return Markup("\n".join(ret))
 
 
-QUOTES = re.compile(r"""("([^"]*?)"|'([^']*?)')""")
+QUOTES = re.compile(r"""(?:"([^"]*?)"|'([^']*?)')""", re.DOTALL)
+
+FLOAT = re.compile(r"^[+-]?[0-9]*\.[0-9]+$")
 
 
 def parse_args(sargs):
@@ -131,7 +147,7 @@ def parse_args(sargs):
     def map_quotes(m):
         i = len(quoted)
         k = f"#######{i}#######"
-        quoted[k] = m.group(2) or m.group(3)
+        quoted[k] = m.group(1) or m.group(2)
         return k
 
     def fix_val(v):
@@ -139,6 +155,8 @@ def parse_args(sargs):
             return quoted[v]
         if v.isdigit():
             return int(v)
+        if FLOAT.match(v):
+            return float(v)
         return v
 
     s = QUOTES.sub(map_quotes, sargs)
@@ -180,6 +198,7 @@ class ShortcodeLexer(BlockLexer):
             self.default_rules.insert(1, "shortcode")
 
     def parse_shortcode(self, match):
+        print("HERE", match.group(1))
         self.tokens.append({"type": "close_html", "text": shortcode(match)})
 
 
@@ -211,7 +230,7 @@ class AdmonitionMixin:
 PAGE_NUM = re.compile("^@([0-9]+)$")
 
 
-BOOTSTRAP_WIDTH = re.compile("^w-[^0-9]*([0-9]+)$")
+BOOTSTRAP_WIDTH = re.compile("^w(?:([0-9]+)|-(?:[a-z-]+)?([0-9]+))$")
 
 
 def get_width(classes, kwargs):
@@ -228,14 +247,15 @@ def get_width(classes, kwargs):
     m = BOOTSTRAP_WIDTH.match(w)
     if not m:
         return 1
-    return int(m.group(1)) / 100.0
+    v = m.group(1) or m.group(2)
+    return int(v) / 100.0
 
 
 class ShortcodesMixin:
 
     SEP = ":"
     IMG_WIDTH = 800
-    SHORTCODE = re.compile(r"{{(.*?)}}")
+    SHORTCODE = re.compile(r"{{(.*?)}}", re.DOTALL)
 
     def image(self, src, title, alt):
         # title must be quoted
@@ -245,6 +265,9 @@ class ShortcodesMixin:
         def getsrc(path):
             return self.record.url_to("!" + path, base_url=get_ctx().base_url)
 
+        if self.record is None:
+            return super().image(src, title, alt)
+
         att = PAGE_NUM.match(src)
         if not att and self.SEP not in alt:
             return super().image(src, title, alt)
@@ -253,27 +276,28 @@ class ShortcodesMixin:
         args, kwargs = parse_args(rest)
         width = get_width(args, kwargs)
         img = None
-        if self.record is not None:
-            if att:
-                n = int(att.group(1))
-                img = self.record.attachments.images.offset(n - 1).limit(1).first()
+
+        if att:
+            n = int(att.group(1))
+            img = self.record.attachments.images.offset(n - 1).limit(1).first()
+        else:
+            url = url_parse(src)
+            if not url.scheme:
+                img = self.record.attachments.images.filter(
+                    (F._id == src) | (F.description == src)
+                ).first()
+
+        if img:
+            if width > 1:  # from width=30px kwargs
+                img = img.thumbnail(width=width)
             else:
-                url = url_parse(src)
-                if not url.scheme:
-                    p = src if src.startswith("/") else "/" + src
-                    img = self.record.attachments.images.filter(
-                        (F._path == p) | (F.description == src)
-                    ).first()
-            if img:
-                if width > 1:  # from width=30px kwargs
-                    img = img.thumbnail(width=width)
-                else:
-                    img = img.thumbnail(width=self.IMG_WIDTH * width)
-                src = getsrc(img.url_path)
+                img = img.thumbnail(width=self.IMG_WIDTH * width)
+            src = getsrc(img.url_path)
 
         src = escape(src)
         alt = escape(alt)
         style = escape(tostyles(kwargs))
+        title = escape(title) if title else ""
         cls = " ".join(args)
         attrs = [
             f'{attr}="{value}"'
@@ -281,7 +305,7 @@ class ShortcodesMixin:
                 ("style", style),
                 ("class", cls),
                 ("alt", alt),
-                ("title", escape(title) if title else ""),
+                ("title", title),
             ]
             if value
         ]
@@ -296,6 +320,7 @@ class ShortcodesMixin:
             url = url_parse(link)
             if not url.scheme:
                 link = self.record.url_to("!" + link, base_url=get_ctx().base_url)
+
         attrs = {}
 
         if "-new-tab" in args:
