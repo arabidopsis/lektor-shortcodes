@@ -198,7 +198,6 @@ class ShortcodeLexer(BlockLexer):
             self.default_rules.insert(1, "shortcode")
 
     def parse_shortcode(self, match):
-        print("HERE", match.group(1))
         self.tokens.append({"type": "close_html", "text": shortcode(match)})
 
 
