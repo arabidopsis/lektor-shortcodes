@@ -11,7 +11,7 @@ the template in the variable `args`.
 Currently no argument checking is done so the template should be
 very defensive and have defaults for all the keyword arguments.
 
-Keys *can't* have spaces.
+Keys *can't* have spaces unless they are quoted.
 
 The full code is:
 
@@ -19,8 +19,7 @@ The full code is:
 
 The plugin invokes a template of the name `shortcodes/{command}.html`
 where the variables available will be the dictionary
-`{**kwargs, args:args, kwargs:kwargs}`. (So if you have a key called `args` or `kwargs` you will have
-to fish it out of kwargs e.g. `kwargs.kwargs` or `kwargs.args`)
+`{**kwargs, args:args, kwargs:kwargs}`. (So if you have a key called `args` or `kwargs` you will have to fish it out of kwargs e.g. `kwargs.kwargs` or `kwargs.args`)
 
 Short codes are meant to be *short* You can change the braces using
 `shortcodes` configuration variable.
@@ -28,7 +27,7 @@ Short codes are meant to be *short* You can change the braces using
 For example for the `shortcodes/youtube.html` you might have for
 bootstrap:
 
-```html
+```jinja
 <div class="embed-responsive embed-responsive-16by9 {{args[1:]|join(' ')}}"
     style="{{kwargs|tostyles}}">
 <iframe
@@ -130,7 +129,7 @@ The `-new-tab` argument for a link will create a `target="_blank"` on the link.
 * `json_request`: *not* a filter. Make a json request to a website e.g. used with the twitter
   short code.
 
-For example `tweet.html` is:
+For example `tweet.html` is [see](https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/get-statuses-oembed):
   
 ```jinja
 {# most useful are: align={left,right,center,none} theme={light,dark} #}
@@ -155,6 +154,7 @@ or add to `[packages]` section of project or theme
 
 ```ini
 [packages]
+# you can use a commit hash instead of main
 https://github.com/arabidopsis/lektor-shortcodes/archive/main.tar.gz = ""
 ```
 

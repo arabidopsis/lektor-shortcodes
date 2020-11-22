@@ -239,15 +239,13 @@ def get_width(classes, kwargs):
             width = width[:-2]
         if width.isdigit():
             return int(width)
-    width = [w for w in classes if w.startswith("w-")]
-    if not width:
-        return 1
-    w = width[0]
-    m = BOOTSTRAP_WIDTH.match(w)
-    if not m:
-        return 1
-    v = m.group(1) or m.group(2)
-    return int(v) / 100.0
+
+    for w in [w for w in classes if w.startswith("w")]:
+        m = BOOTSTRAP_WIDTH.match(w)
+        if m:
+            v = m.group(1) or m.group(2)
+            return int(v) / 100.0
+    return 1
 
 
 class ShortcodesMixin:
@@ -271,7 +269,7 @@ class ShortcodesMixin:
         if not att and self.SEP not in alt:
             return super().image(src, title, alt)
 
-        alt, rest = alt.split(self.SEP, 1)
+        alt, rest = alt.rsplit(self.SEP, 1)
         args, kwargs = parse_args(rest)
         width = get_width(args, kwargs)
         img = None
@@ -311,9 +309,12 @@ class ShortcodesMixin:
         return f"""<img src="{src}" {' '.join(attrs)}/>"""
 
     def link(self, link, title, text):
+        # we have to watch out for
+        # [<i style="color:blue"></i>](link)
         if self.SEP not in text:
             return super().link(link, title, text)
-        text, rest = text.split(self.SEP, 1)
+        text, rest = text.rsplit(self.SEP, 1)
+
         args, kwargs = parse_args(rest)
         if self.record is not None:
             url = url_parse(link)
@@ -364,13 +365,9 @@ class ShortcodesPlugin(Plugin):
     def on_markdown_config(self, config=None, extra_flags=None):
         # click.secho(f"markdownconfig {config}", fg='yellow', bold=True)
         if config:
-
-            class M(ShortcodesMixin):
-                SEP = self.md_config["SEP"]
-                IMG_WIDTH = self.md_config["IMG_WIDTH"]
-                SHORTCODE = self.md_config["SHORTCODE"]
-
-            config.renderer_mixins.extend([M, AdmonitionMixin])
+            config.renderer_mixins.extend(
+                [self.md_config["ShortcodesMixin"], AdmonitionMixin]
+            )
             # also for inline
             config.options["block"] = ShortcodeLexer(self.md_config["SHORTCODE"])
 
@@ -417,6 +414,14 @@ class ShortcodesPlugin(Plugin):
 
         config = self.get_config()
         self.make_md_config(config)
+
+        class M(ShortcodesMixin):
+            SEP = self.md_config["SEP"]
+            IMG_WIDTH = self.md_config["IMG_WIDTH"]
+            SHORTCODE = self.md_config["SHORTCODE"]
+
+        self.md_config["ShortcodesMixin"] = M
+
         actions = config.section_as_dict("actions")
 
         def action_url(action):

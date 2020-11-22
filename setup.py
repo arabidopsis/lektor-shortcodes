@@ -18,7 +18,7 @@ setup(
     name="lektor-shortcodes",
     packages=find_packages(),
     url="https://github.com/arabidopsis/lektor-shortcodes",
-    version="0.1",
+    version="0.2",
     classifiers=["Framework :: Lektor", "Environment :: Plugins"],
     entry_points={
         "lektor.plugins": ["shortcodes = lektor_shortcodes:ShortcodesPlugin"]
