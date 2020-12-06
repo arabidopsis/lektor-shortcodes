@@ -259,11 +259,9 @@ class ShortcodesMixin:
         # ![alt](src "title")
         # if we have a config file
         # get_ctx().record_dependency(self.config_filename)
+
         def getsrc(path):
             return self.record.url_to("!" + path, base_url=get_ctx().base_url)
-
-        if self.record is None:
-            return super().image(src, title, alt)
 
         att = PAGE_NUM.match(src)
         if not att and self.SEP not in alt:
@@ -271,25 +269,26 @@ class ShortcodesMixin:
 
         alt, rest = alt.rsplit(self.SEP, 1)
         args, kwargs = parse_args(rest)
-        width = get_width(args, kwargs)
-        img = None
 
-        if att:
-            n = int(att.group(1))
-            img = self.record.attachments.images.offset(n - 1).limit(1).first()
-        else:
-            url = url_parse(src)
-            if not url.scheme:
-                img = self.record.attachments.images.filter(
-                    (F._id == src) | (F.description == src)
-                ).first()
-
-        if img:
-            if width > 1:  # from width=30px kwargs
-                img = img.thumbnail(width=width)
+        if self.record:
+            img = None
+            width = get_width(args, kwargs)
+            if att:
+                n = int(att.group(1))
+                img = self.record.attachments.images.offset(n - 1).limit(1).first()
             else:
-                img = img.thumbnail(width=self.IMG_WIDTH * width)
-            src = getsrc(img.url_path)
+                url = url_parse(src)
+                if not url.scheme:
+                    img = self.record.attachments.images.filter(
+                        (F._id == src) | (F.description == src)
+                    ).first()
+
+            if img:
+                if width > 1:  # from width=30px kwargs
+                    img = img.thumbnail(width=width)
+                else:
+                    img = img.thumbnail(width=self.IMG_WIDTH * width)
+                src = getsrc(img.url_path)
 
         src = escape(src)
         alt = escape(alt)
