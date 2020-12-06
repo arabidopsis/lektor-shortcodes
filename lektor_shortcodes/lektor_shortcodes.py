@@ -313,7 +313,10 @@ class ShortcodesMixin:
         # [<i style="color:blue"></i>](link)
         if self.SEP not in text:
             return super().link(link, title, text)
-        text, rest = text.rsplit(self.SEP, 1)
+        ltext, rest = text.rsplit(self.SEP, 1)
+        if ">" in rest:
+            # probably something like style="color:blue" in original text
+            return super().link(link, title, text)
 
         args, kwargs = parse_args(rest)
         if self.record is not None:
@@ -343,7 +346,7 @@ class ShortcodesMixin:
             ]
             if value
         ]
-        return f"""<a href="{link}" {' '.join(attrs)}/>{text}</a>"""
+        return f"""<a href="{link}" {' '.join(attrs)}/>{ltext}</a>"""
 
     # def paragraph(self, text):
     #     # if we have a config file
