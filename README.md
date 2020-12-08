@@ -119,6 +119,7 @@ split_text = '---'
 ## Miscellaeneous Filters/Globals
 
 The `-new-tab` argument for a link will create a `target="_blank"` on the link.
+A `download` argument for a link will add a "download" attribute for the link.
 
 * `shorten`: uses `jinja2:truncate` but understands `Markdown` and `Markup` objects
 * `mergedict`: e.g. `dict|mergedict(a=1,b=2)`. Same as `{**dict, a=1,b=2}`

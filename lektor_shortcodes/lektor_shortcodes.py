@@ -204,15 +204,17 @@ class ShortcodeLexer(BlockLexer):
 _prefix_re = re.compile(r"^\s*(!{1,4})\s+")
 
 CLASSES = {
-    1: "success",
+    1: "note",
     2: "info",
-    3: "warning",
-    4: "danger",
+    3: "tip",
+    4: "warning",
 }
 
-C = """<div class="alert alert-{}">
+C = """<div class="card admonition admonition-{} mb-1">
+<div class="card-header">{}:</div>
+<div class="card-body">
 {}
-</div>"""
+</div></div>"""
 
 # see https://github.com/lektor/lektor-markdown-admonition/blob/master/lektor_markdown_admonition.py
 
@@ -223,7 +225,8 @@ class AdmonitionMixin:
         if match is None:
             return super().paragraph(text)
         level = len(match.group(1))
-        return C.format(CLASSES[level], super().paragraph(text[match.end() :]),)
+        cls = CLASSES[level]
+        return C.format(cls, cls.title(), text[match.end() :])
 
 
 PAGE_NUM = re.compile("^@([0-9]+)$")
@@ -324,11 +327,15 @@ class ShortcodesMixin:
                 link = self.record.url_to("!" + link, base_url=get_ctx().base_url)
 
         attrs = {}
+        download = ""
 
         if "-new-tab" in args:
             args.remove("-new-tab")
             attrs["target"] = "_blank"
             attrs["rel"] = "noreferrer noopener"  # from MDN
+        if "download" in args:
+            args.remove("download")
+            download = " download"
         if "target" in kwargs:
             attrs["target"] = kwargs.pop("target")
             attrs["rel"] = "noreferrer noopener"  # from MDN
@@ -345,7 +352,7 @@ class ShortcodesMixin:
             ]
             if value
         ]
-        return f"""<a href="{link}" {' '.join(attrs)}/>{ltext}</a>"""
+        return f"""<a href="{link}"{download} {' '.join(attrs)}/>{ltext}</a>"""
 
     # def paragraph(self, text):
     #     # if we have a config file

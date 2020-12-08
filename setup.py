@@ -10,8 +10,8 @@ with open("README.md", encoding="utf8") as f:
 setup(
     author="Ian Castleden",
     author_email="ian.castleden@gmail.com",
-    description="Embeds shortcodes in Markdown.",
-    keywords="Lektor plugin",
+    description="Lektor Plugin to embed shortcodes in Markdown.",
+    keywords="Lektor plugin static-site",
     license="MIT",
     long_description=readme,
     long_description_content_type="text/markdown",
