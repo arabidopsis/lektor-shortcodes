@@ -209,9 +209,15 @@ CLASSES = {
     3: "tip",
     4: "warning",
 }
+FA = {
+    1: "sticky-note",
+    2: "info-circle",
+    3: "candy-cane",
+    4: "exclamation-triangle",
+}
 
 C = """<div class="card admonition admonition-{} mb-1">
-<div class="card-header">{}:</div>
+<div class="card-header"><i class="fas fa-{}"></i> {}:</div>
 <div class="card-body">
 {}
 </div></div>"""
@@ -226,7 +232,7 @@ class AdmonitionMixin:
             return super().paragraph(text)
         level = len(match.group(1))
         cls = CLASSES[level]
-        return C.format(cls, cls.title(), text[match.end() :])
+        return C.format(cls, FA[level], cls.title(), text[match.end() :])
 
 
 PAGE_NUM = re.compile("^@([0-9]+)$")
