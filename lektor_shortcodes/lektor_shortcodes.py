@@ -216,11 +216,11 @@ FA = {
     4: "exclamation-triangle",
 }
 
-C = """<div class="card admonition admonition-{} mb-1">
-<div class="card-header"><i class="fas fa-{}"></i> {}:</div>
-<div class="card-body">
-{}
-</div></div>"""
+C = """
+<div class="card admonition admonition-{cls} mb-1">
+  <div class="card-header"><i class="fas fa-{fa}"></i> {header}:</div>
+  <div class="card-body">{body}</div>
+</div>"""
 
 # see https://github.com/lektor/lektor-markdown-admonition/blob/master/lektor_markdown_admonition.py
 
@@ -232,7 +232,9 @@ class AdmonitionMixin:
             return super().paragraph(text)
         level = len(match.group(1))
         cls = CLASSES[level]
-        return C.format(cls, FA[level], cls.title(), text[match.end() :])
+        return C.format(
+            cls=cls, fa=FA[level], header=cls.title(), body=text[match.end() :]
+        )
 
 
 PAGE_NUM = re.compile("^@([0-9]+)$")
