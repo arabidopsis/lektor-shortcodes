@@ -73,7 +73,7 @@ def lastmod(record, format=None):
 
 
 def add_script(
-    record, src, embed=False, template=False, jquery=True, css=False, **kwargs
+    record, src, embed=False, template=False, jquery=False, css=False, **kwargs
 ):
     src = src.strip()
     if not src:
