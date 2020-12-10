@@ -224,7 +224,7 @@ class AdmonitionMixin:
         return render("admonition", [], fmt)
 
     def table(self, header, body):
-        return f'<table class="table">\n<thead>{header}</thead>\n<tbody>{body}</tbody>\n</table>'
+        return f'<table class="table w-75 mx-auto">\n<thead>{header}</thead>\n<tbody>{body}</tbody>\n</table>'
 
 
 PAGE_NUM = re.compile("^@([0-9]+)$")
