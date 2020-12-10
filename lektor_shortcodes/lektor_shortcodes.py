@@ -209,18 +209,6 @@ CLASSES = {
     3: "tip",
     4: "warning",
 }
-FA = {
-    1: "sticky-note",
-    2: "info-circle",
-    3: "candy-cane",
-    4: "exclamation-triangle",
-}
-
-C = """
-<div class="card admonition admonition-{cls} mb-1">
-  <div class="card-header"><i class="fas fa-{fa}"></i> {header}:</div>
-  <div class="card-body">{body}</div>
-</div>"""
 
 # see https://github.com/lektor/lektor-markdown-admonition/blob/master/lektor_markdown_admonition.py
 
@@ -232,9 +220,8 @@ class AdmonitionMixin:
             return super().paragraph(text)
         level = len(match.group(1))
         cls = CLASSES[level]
-        return C.format(
-            cls=cls, fa=FA[level], header=cls.title(), body=text[match.end() :]
-        )
+        fmt = dict(cls=cls, body=text[match.end() :])
+        return render("admonition", [], fmt)
 
     def table(self, header, body):
         return f'<table class="table">\n<thead>{header}</thead>\n<tbody>{body}</tbody>\n</table>'
