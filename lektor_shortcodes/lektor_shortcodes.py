@@ -236,6 +236,9 @@ class AdmonitionMixin:
             cls=cls, fa=FA[level], header=cls.title(), body=text[match.end() :]
         )
 
+    def table(self, header, body):
+        return f'<table class="table">\n<thead>{header}</thead>\n<tbody>{body}</tbody>\n</table>'
+
 
 PAGE_NUM = re.compile("^@([0-9]+)$")
 
