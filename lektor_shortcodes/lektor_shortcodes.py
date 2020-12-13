@@ -99,14 +99,15 @@ def add_script(
 
 
 def gen_js(record):
+    if not record or not hasattr(record, "_js"):
+        return ""
+
     ctx = get_ctx()
 
     def js_template(name):
         t = """<script>{%% include "%s" %%}</script>""" % name
         return ctx.env.jinja_env.from_string(t).render()
 
-    if not record or not hasattr(record, "_js"):
-        return ""
     js = record._js
     ret = []
     for src in js["css"]:
@@ -391,10 +392,6 @@ class ShortcodesPlugin(Plugin):
     #             print("end", source.path, source._shortcodes)
     #         del source._shortcodes
     #     return extra_flags
-
-    # def update_markdown(self):
-    #     for k,v in self.md_config.items():
-    #         setattr(ShortcodesMixin,k,v)
 
     def make_md_config(self, settings):
         sep = settings.get("separator")
