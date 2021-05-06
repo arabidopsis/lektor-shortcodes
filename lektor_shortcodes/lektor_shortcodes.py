@@ -4,7 +4,7 @@ from datetime import datetime
 
 import click
 import requests
-from jinja2 import TemplateNotFound
+from jinja2 import TemplateNotFound, Undefined
 from jinja2.filters import do_truncate, environmentfilter
 from lektor.context import get_ctx
 from lektor.db import F
@@ -434,11 +434,14 @@ class ShortcodesPlugin(Plugin):
             return actions[action]
 
         # session = requests.Session()
-        def get_json(url, params, **kwargs):
-            return requests.get(url, params=params, **kwargs).json()
+        def json_request(url, params, **kwargs):
+            r = requests.get(url, params=params, **kwargs)
+            if r.status_code == 200:
+                return r.json()
+            return Undefined(name=url)
 
         # for e.g. tweet shortcode
-        self.env.jinja_env.globals["json_request"] = get_json
+        self.env.jinja_env.globals["json_request"] = json_request
         # e.g kwargs | mergedict(a=1, c=2)
         # because we can't do {**kwargs, a:1, c:2}
         self.env.jinja_env.filters.update(
