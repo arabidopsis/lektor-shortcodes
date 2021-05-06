@@ -144,7 +144,7 @@ For example `tweet.html` is [see](https://developer.twitter.com/en/docs/twitter-
 
 ## Installation
 
-place this package in the directory `packages` maybe with
+place this package in the directory `packages` (of your lektor project) maybe with
 
 ```bash
 git submodule add https://github.com/arabidopsis/lektor-shortcodes.git packages/shortcodes
