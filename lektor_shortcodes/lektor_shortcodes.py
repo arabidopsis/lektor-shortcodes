@@ -429,6 +429,8 @@ class ShortcodesPlugin(Plugin):
         actions = config.section_as_dict("actions")
 
         def action_url(action):
+            if isinstance(action, Undefined):
+                return actions.get("default", "/app/contact-form/contact-us")
             if action not in actions:
                 return action
             return actions[action]
