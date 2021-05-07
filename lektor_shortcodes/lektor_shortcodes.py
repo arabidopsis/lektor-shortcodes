@@ -49,6 +49,10 @@ def mergedict(d, **kwargs):
     return {**d, **kwargs}
 
 
+def rmkeys(d, *args):
+    return dict(i for i in d.items() if i[0] not in args)
+
+
 def split(s, sep=None):  # pylint: disable=unused-variable
     return [] if not s else str(s).split(sep)
 
@@ -458,6 +462,7 @@ class ShortcodesPlugin(Plugin):
                 "tostyles": tostyles,
                 "split": split,
                 "action_url": action_url,
+                "rmkeys": rmkeys,
             }
         )
 
