@@ -2,7 +2,6 @@ import os
 import re
 from datetime import datetime
 
-import click
 import requests
 from jinja2 import TemplateNotFound, Undefined
 from jinja2.filters import do_truncate, environmentfilter
@@ -466,8 +465,8 @@ class ShortcodesPlugin(Plugin):
             }
         )
 
-        t = datetime.now().isoformat()
+        # t = datetime.now().isoformat()
         # path = os.environ.get("PATH")
 
-        click.secho(f"shortcodes initialised @ {t}", fg="green", bold=True)
+        # click.secho(f"shortcodes initialised @ {t}", fg="green", bold=True, err=True)
         return extra_flags
