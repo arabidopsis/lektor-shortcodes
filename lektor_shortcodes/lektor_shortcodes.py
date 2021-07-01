@@ -4,7 +4,7 @@ from datetime import datetime
 
 import requests
 from jinja2 import TemplateNotFound, Undefined
-from jinja2.filters import do_truncate, environmentfilter
+from jinja2.filters import do_truncate, pass_environment
 from lektor.context import get_ctx
 from lektor.db import F
 from lektor.markdown import Markdown
@@ -25,7 +25,7 @@ local_timezone = datetime.utcnow().astimezone().tzinfo
 # jinja filters --------------------
 
 
-@environmentfilter
+@pass_environment
 def shorten(env, text, *args, **kwargs):
     if isinstance(text, Markdown):
         text.source = do_truncate(env, text.source, *args, **kwargs)
