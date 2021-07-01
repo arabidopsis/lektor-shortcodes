@@ -433,8 +433,10 @@ class ShortcodesPlugin(Plugin):
 
         def action_url(action):
             if isinstance(action, Undefined):
-                return actions.get("default", "/app/contact-form/contact-us")
+                action = "default"
             if action not in actions:
+                if action == "default":
+                    return "/lektor/contact-form/contact-us"
                 return action
             return actions[action]
 
